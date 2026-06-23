@@ -17,20 +17,84 @@ PDF → [Ollama(로컬): 텍스트추출·메타데이터·섹션분리] → JSO
 
 ---
 
-## 2. 사전 준비물
+## 2. 빠른 시작
 
-| 항목 | 설치 |
+### Step 1 — LLM 백엔드 선택 후 설치
+
+먼저 어떤 LLM을 쓸지 결정:
+
+| 상황 | 선택 |
 |------|------|
-| Python 3.10+ | python.org |
-| Claude Code CLI | 구독 후 `claude` 로그인 (`claude -p`가 동작해야 함) |
-| Ollama | ollama.com 설치 후 `ollama pull qwen2.5:7b` |
-| Obsidian | obsidian.md (Vault 1개 생성) |
-| Python 패키지 | `pip install pymupdf4llm ollama` |
+| 로컬 GPU 있음 (VRAM 8GB+) | **Ollama** (무료, 오프라인) |
+| 노트북 / GPU 없음 | **Claude Code 구독** 또는 **OpenAI API** |
 
-확인:
+---
+
+#### 공통 필수 설치
+
+| 항목 | 설치 방법 | 확인 |
+|------|-----------|------|
+| Python 3.10+ | [python.org](https://python.org) | `python --version` |
+| Obsidian | [obsidian.md](https://obsidian.md) — Vault 경로: `~/Documents/ResearchWiki/Papaer` | — |
+
+---
+
+#### A. Ollama 사용 (로컬, 무료)
+
+```bash
+# 1) Ollama 설치: https://ollama.com
+# 2) 모델 다운 (택 1)
+ollama pull exaone3.5:7.8b    # 한국어 특화
+ollama pull qwen2.5:14b       # 다국어 범용
 ```
-claude -p "hello"        # 응답 오면 OK
-ollama run qwen2.5:7b    # 모델 동작 확인
+
+`config.py`:
+```python
+OLLAMA_MODEL = "exaone3.5:7.8b"   # 다운받은 모델명
+```
+
+---
+
+#### B. Claude Code 사용 (구독 필요, Ollama 설치 불필요)
+
+```bash
+# Claude Code 설치: https://claude.ai/code
+claude -p "hello"   # 로그인 후 응답 오면 OK
+```
+
+`claude_analyzer.py`와 Ollama 호출 파일들의 교체 방법 → [섹션 11](#11-다른-llm으로-교체하기)
+
+---
+
+#### C. OpenAI API 사용 (API 키 필요, Ollama 설치 불필요)
+
+```bash
+set OPENAI_API_KEY=sk-...
+```
+
+`claude_analyzer.py`와 Ollama 호출 파일들의 교체 방법 → [섹션 11](#11-다른-llm으로-교체하기)
+
+### Step 2 — 레포 클론 및 설정
+
+```bash
+git clone https://github.com/JoJunKi/llm-wiki-scripts.git
+cd llm-wiki-scripts
+pip install -r requirements.txt
+python setup.py          # 바탕화면에 .bat 파일 자동 생성
+```
+
+`config.py` 열어서 모델명 확인/수정:
+```python
+OLLAMA_MODEL   = "exaone3.5:7.8b"   # 본인이 pull한 모델명
+OPENALEX_EMAIL = ""                   # 선택 — 있으면 논문검색 응답 빠름
+```
+
+### Step 3 — 동작 확인
+
+```bash
+# 바탕화면의 논문검색.bat 실행 후
+# Query + options: diffusion time series --dry
+# 결과 목록 나오면 OK
 ```
 
 ---
