@@ -1,0 +1,5 @@
+anthropic
+ollama
+pymupdf4llm
+arxiv
+requests

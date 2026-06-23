@@ -1,0 +1,44 @@
+# ── 개인 설정 ──────────────────────────────────────────
+# config.py는 공유하되 아래 값은 각자 설정
+# OPENALEX_EMAIL, SEMANTIC_SCHOLAR_API_KEY
+
+# ── Vault 내용 (개인 논문 데이터) ───────────────────────
+../ResearchWiki/Papaer/papers/
+../ResearchWiki/Papaer/concepts/
+../ResearchWiki/Papaer/topics/
+../ResearchWiki/Papaer/gaps/
+../ResearchWiki/Papaer/sessions/
+../ResearchWiki/Papaer/study-logs/
+../ResearchWiki/Papaer/writing/
+../ResearchWiki/Papaer/journals/
+../ResearchWiki/Papaer/my_notes/
+
+# ── 데이터 파일 ──────────────────────────────────────────
+../ResearchWiki/_inbox/
+../ResearchWiki/_archive/
+../ResearchWiki/_paper_log.csv
+../ResearchWiki/_search_index.jsonl
+../ResearchWiki/_processed_log.json
+
+# ── 임시/캐시 ───────────────────────────────────────────
+out.json
+paper_preprocessed.json
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+*.log
+temp/
+tmp/
+
+# ── OS ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp

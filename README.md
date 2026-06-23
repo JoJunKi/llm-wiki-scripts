@@ -1,0 +1,142 @@
+# LLM Wiki — 논문 PDF → Obsidian 자동 정리 시스템
+
+PDF 논문을 넣으면 자동으로 Obsidian 위키 노트 2개(요약본 brief + 상세본 detailed)를 만들고,
+주제·개념별로 분류·연결해주는 시스템.
+
+## 1. 개요
+
+**파이프라인:**
+```
+PDF → [Ollama(로컬): 텍스트추출·메타데이터·섹션분리] → JSON
+    → [Claude Code: 핵심분석·개념연결] → brief.md + detailed.md → Obsidian Vault
+```
+
+**역할 분담:**
+- **Ollama (로컬, 무료)** = 잡일(PDF 파싱·구조화)
+- **Claude Code (구독)** = 핵심 분석. **API 키 불필요** — `claude -p` CLI가 구독 인증으로 동작
+
+---
+
+## 2. 사전 준비물
+
+| 항목 | 설치 |
+|------|------|
+| Python 3.10+ | python.org |
+| Claude Code CLI | 구독 후 `claude` 로그인 (`claude -p`가 동작해야 함) |
+| Ollama | ollama.com 설치 후 `ollama pull qwen2.5:7b` |
+| Obsidian | obsidian.md (Vault 1개 생성) |
+| Python 패키지 | `pip install pymupdf4llm ollama` |
+
+확인:
+```
+claude -p "hello"        # 응답 오면 OK
+ollama run qwen2.5:7b    # 모델 동작 확인
+```
+
+---
+
+## 3. 폴더 구조
+
+```
+~/llm-wiki-scripts/          ← 스크립트 (코드)
+   config.py
+   ollama_processor.py
+   claude_analyzer.py
+   prompts.py
+   vault_indexer.py
+   run_wiki.py
+   normalize_vault.py
+   CLAUDE.md
+
+~/Documents/ResearchWiki/    ← 데이터
+   _inbox/        ← 처리할 PDF를 여기에 넣음
+   _archive/      ← 처리 끝난 PDF 자동 이동
+   _processed_log.json
+   <Vault>/       ← Obsidian Vault
+      papers/brief/      ← 요약본 (그래프 hub)
+      papers/detailed/   ← 상세본
+      topics/            ← 주제 MOC (자동 생성)
+      concepts/          ← 개념 노트 (자동 생성)
+```
+
+---
+
+## 4. 설정 — `config.py`만 본인 환경에 맞게 수정
+
+```python
+VAULT_PATH   = "본인 Obsidian Vault 절대경로"
+OLLAMA_MODEL = "qwen2.5:7b"   # 설치한 모델명
+OUTPUT_LANG  = "korean"
+```
+- `_inbox` / `_archive`는 코드가 **Vault 상위 폴더**에 자동 생성 (`VAULT_PATH.parent / "_inbox"`)
+
+---
+
+## 5. 핵심 설계 원칙 (그대로 따라야 그래프가 깔끔함)
+
+1. **brief가 그래프 hub** — `[[개념]]` 링크는 **brief에만** 넣음. detailed는 brief로만 연결.
+   (노드가 두 개로 갈라지는 것 방지)
+2. **개념 이름 표준 = Title Case + 공백** (`Sentiment Analysis`, `Time Series Forecasting`).
+   - 약어·고유명은 원형 유지 (`FinBERT`, `LSTM`, `γ-Divergence`, `Student-t Distribution`)
+3. **주제와 개념 중복 금지** — 주제(MOC)가 이미 hub이므로 같은 이름의 개념 노트는 만들지 않음
+4. **자동 정규화** — Claude가 kebab-case를 내보내도 저장 직전 `normalize_brief_links()`가
+   표준형으로 강제 변환 → 재발 방지
+
+---
+
+## 6. Windows 주의사항 (코드에 이미 반영됨)
+
+- 콘솔 cp949 인코딩 → 모든 출력 UTF-8 강제 (`io.TextIOWrapper`, `stdout.buffer.write`)
+- pymupdf4llm이 stdout 오염 → 파일 디스크립터 리다이렉트(`os.dup2(2,1)`)로 차단
+- 진행 로그는 stderr로, 데이터(JSON)는 stdout으로 분리
+
+---
+
+## 7. 평소 사용법
+
+```
+# 1) PDF를 _inbox에 넣고
+cd ~/llm-wiki-scripts
+python run_wiki.py --all          # 일괄 처리 (중복 자동 스킵, PDF는 _archive로 이동)
+
+# 또는 하나만
+python run_wiki.py "경로/논문.pdf"
+
+# 2) Obsidian Graph View 새로고침
+```
+
+처리된 기록은 `_processed_log.json`에 누적됨.
+
+---
+
+## 8. 스크립트 역할 요약
+
+| 파일 | 역할 |
+|------|------|
+| `config.py` | Vault 경로, Ollama 모델, 임시 폴더 설정 |
+| `ollama_processor.py` | PDF 텍스트 추출 + 메타데이터 + 섹션 분리 (로컬) |
+| `prompts.py` | Claude에 전달할 brief/detailed 프롬프트 템플릿 |
+| `vault_indexer.py` | 기존 개념·주제·논문 인덱싱 (그래프 연결성 확보용 컨텍스트) |
+| `claude_analyzer.py` | `claude -p` 호출 → 분석 → 저장 + MOC/개념 stub 자동 생성·정규화 |
+| `run_wiki.py` | 메인 실행. 일괄 처리 + 중복 검사 + 아카이브 + 로그 |
+| `normalize_vault.py` | (선택) 기존 개념 이름 일괄 정리용. 후처리 자동 정규화가 있어 평소엔 불필요 |
+
+---
+
+## 9. 권장 Obsidian 플러그인
+
+- **Dataview** — 주제 MOC의 자동 논문 목록 쿼리 활성화
+- Graph View로 논문 ↔ 개념 ↔ 주제 연결 시각화
+
+---
+
+## 10. 모델 변경 (선택)
+
+기본은 Claude Code 구독의 기본 모델을 따름. 고정하려면 `claude_analyzer.py`의
+`call_claude_cli`에서 `--model` 옵션 추가:
+
+```python
+["claude", "-p", "--model", "opus"]   # 또는 "sonnet"
+```
+- 분석 품질 우선: `opus`
+- 속도·비용 효율: `sonnet`
