@@ -140,3 +140,80 @@ python run_wiki.py "경로/논문.pdf"
 ```
 - 분석 품질 우선: `opus`
 - 속도·비용 효율: `sonnet`
+
+---
+
+## 11. Claude Code 없이 다른 LLM으로 사용하기
+
+Claude Code(`claude -p`) 의존 부분은 `claude_analyzer.py`의 `call_claude_cli()` 함수 **하나뿐**.
+나머지(Ollama, PDF 파싱, 검색, Gap 분석)는 독립적으로 동작.
+
+### 옵션 A — Anthropic API 직접 사용 (Claude, API 키 방식)
+
+`config.py`에 추가:
+```python
+# config.py
+ANTHROPIC_API_KEY = "sk-ant-..."   # 환경변수로 설정해도 됨
+```
+
+환경변수 설정 후 실행하면 자동으로 API 모드로 전환됨:
+```
+set ANTHROPIC_API_KEY=sk-ant-...
+python run_wiki.py --all
+```
+> `claude_analyzer.py`가 `ANTHROPIC_API_KEY` 유무를 감지해 CLI/API 모드 자동 선택.
+
+---
+
+### 옵션 B — OpenAI API (GPT-4o 등)
+
+`claude_analyzer.py`의 `call_claude_cli()` 교체:
+
+```python
+# pip install openai
+from openai import OpenAI
+client = OpenAI()   # OPENAI_API_KEY 환경변수 자동 인식
+
+def call_claude_cli(prompt: str) -> str:
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=2048,
+    )
+    return resp.choices[0].message.content.strip()
+```
+
+---
+
+### 옵션 C — OpenAI Codex CLI
+
+```python
+def call_claude_cli(prompt: str) -> str:
+    result = subprocess.run(
+        ["codex", "-p"],
+        input=prompt.encode("utf-8"),
+        capture_output=True,
+        timeout=600,
+    )
+    return result.stdout.decode("utf-8").strip()
+```
+> Codex CLI 출력 형식에 따라 파싱 조정 필요할 수 있음.
+
+---
+
+### 옵션 D — Ollama 전용 (완전 무료·오프라인)
+
+`claude_analyzer.py`의 `call_claude_cli()` 교체:
+
+```python
+import ollama
+from config import OLLAMA_MODEL
+
+def call_claude_cli(prompt: str) -> str:
+    resp = ollama.chat(
+        model=OLLAMA_MODEL,   # config.py에서 설정한 모델
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return resp["message"]["content"].strip()
+```
+> brief 품질은 모델 성능에 따라 차이남. `qwen2.5:14b` 이상 권장.
