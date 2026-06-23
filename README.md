@@ -143,7 +143,48 @@ python run_wiki.py "경로/논문.pdf"
 
 ---
 
-## 11. Claude Code 없이 다른 LLM으로 사용하기
+## 11. 다른 LLM으로 교체하기
+
+이 시스템의 LLM 호출 지점은 두 군데:
+
+| 역할 | 현재 사용 | 호출 위치 |
+|------|-----------|-----------|
+| brief 핵심 분석 | Claude Code (`claude -p`) | `claude_analyzer.py` → `call_claude_cli()` |
+| PDF 파싱·검색·개념정리·Gap 분석 | Ollama (로컬) | `ollama_processor.py`, `vault_search.py`, `connect_vault.py`, `gap_finder.py` → `ollama.chat()` |
+
+**두 군데 모두 독립적으로 교체 가능.** Ollama를 Codex/Claude Code/OpenAI로 바꾸거나,
+Claude Code를 Ollama로 바꾸거나, 둘 다 같은 API로 통일하는 것도 가능.
+
+### Ollama 호출 교체 방법
+
+`ollama.chat()` 쓰는 파일들(`ollama_processor.py`, `vault_search.py`, `connect_vault.py`, `gap_finder.py`)에서
+아래 함수를 원하는 백엔드로 교체하면 됨:
+
+```python
+# 기존 (Ollama)
+import ollama
+resp = ollama.chat(model=OLLAMA_MODEL, messages=[...])
+text = resp["message"]["content"]
+
+# → OpenAI로 교체
+from openai import OpenAI
+client = OpenAI()
+resp = client.chat.completions.create(model="gpt-4o", messages=[...])
+text = resp.choices[0].message.content
+
+# → Anthropic API로 교체
+import anthropic
+client = anthropic.Anthropic()
+resp = client.messages.create(model="claude-sonnet-4-6", max_tokens=2048, messages=[...])
+text = resp.content[0].text
+
+# → Codex CLI로 교체
+result = subprocess.run(["codex", "-p"], input=prompt.encode(), capture_output=True)
+text = result.stdout.decode()
+```
+
+> **주의:** Ollama는 로컬 무료지만 Claude Code(`claude -p`) 구독이나 OpenAI API는 토큰 비용 발생.
+> PDF 파싱은 논문당 수십 회 LLM 호출 → 비용 민감한 작업에는 Ollama 유지 권장.
 
 Claude Code(`claude -p`) 의존 부분은 `claude_analyzer.py`의 `call_claude_cli()` 함수 **하나뿐**.
 나머지(Ollama, PDF 파싱, 검색, Gap 분석)는 독립적으로 동작.
